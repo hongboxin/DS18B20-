@@ -20,7 +20,7 @@ int get_temperature(float *temp);
 void print_usage(char *parameter);
 
 /* The function is used for parameters parsing */
-struct argument *parameter_analysis();
+struct argument *parameter_analysis(int argc,char *argv[]);
 
 /* This structure is used to store information about parameters parsing */
 struct argument{

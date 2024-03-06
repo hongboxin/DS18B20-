@@ -24,7 +24,7 @@ void print_usage(char *parameter)
 	printf("-s(--second):Please give a specified time(in seconds)for temperature sampling!\n");
 }
 
-struct argument *parameter_analysis()
+struct argument *parameter_analysis(int argc,char *argv[])
 {
 	int					ch = 0;
 	struct argument		*argp =NULL ;
