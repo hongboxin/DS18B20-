@@ -16,4 +16,23 @@
 /*This function is used to get the temperature from the ds18b20 temperature sensor */
 int get_temperature(float *temp);
 
+/*The function is used to print parameters to make relevant information */
+void print_usage(char *parameter);
+
+/* The function is used for parameters parsing */
+struct argument *parameter_analysis(int argc,char *argv[]);
+
+/* This structure is used to store information about parameters parsing */
+struct argument{
+	char	*ip;
+	int		port;
+	int		second;
+};
+
+/* This function enables the client to communicate with the socket */
+int socket_client(int argc,char *argv[]);
+
+/* This function enables the server to communicate with the socket */
+int socket_server(int argc,char *argv[],char *listen_ip,int listen_port);
+
 #endif

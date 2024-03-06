@@ -27,7 +27,7 @@ void print_usage(char *parameter)
 struct argument *parameter_analysis(int argc,char *argv[])
 {
 	int					ch = 0;
-	struct argument		*argp =NULL ;
+	struct argument		*argp;
 
 	struct option	opt[] = {
 		{"ip",required_argument,NULL,'i'},
@@ -36,7 +36,7 @@ struct argument *parameter_analysis(int argc,char *argv[])
 		{"help",no_argument,NULL,'h'},
 		{NULL,0,NULL,0}
 	};
-
+	
 	while( (ch = getopt_long(argc,argv,"i:p:s:h",opt,NULL)) != -1)
 	{
 		switch(ch)
