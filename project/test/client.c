@@ -45,14 +45,14 @@ int main(int argc,char *argv[])
 	}
 
 	argp = (struct argument *)malloc(sizeof(struct argument *));
-	printf("2\n");
+	
 	if( !(argp = parameter_analysis(argc,argv)) )
 	{  
 		printf("Client parameter analysis failure:%s\n",strerror(errno));
 		
 		return -1;
 	}   
-	printf("3\n");		    
+			    
 	memset(&servaddr,0,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port   = htons(argp->port);

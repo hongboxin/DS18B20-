@@ -28,6 +28,9 @@ struct argument *parameter_analysis(int argc,char *argv[])
 {
 	int					ch = 0;
 	struct argument		*argp;
+	struct argument		arg_1;
+
+	argp = &arg_1;
 
 	struct option	opt[] = {
 		{"ip",required_argument,NULL,'i'},
@@ -42,15 +45,15 @@ struct argument *parameter_analysis(int argc,char *argv[])
 		switch(ch)
 		{
 			case 'i':
-				(*argp).ip = optarg;
+				arg_1.ip = optarg;
 				break;
 
 			case 'p':
-				(*argp).port = atoi(optarg);
+				arg_1.port = atoi(optarg);
 				break;
 
 			case 's':
-				(*argp).second = atoi(optarg);
+				arg_1.second = atoi(optarg);
 				break;
 
 			default:
@@ -58,7 +61,7 @@ struct argument *parameter_analysis(int argc,char *argv[])
 		}
 	}
 	
-	if( !(*argp).ip || !(*argp).port || !(*argp).second )
+	if( !arg_1.ip || !arg_1.port || !arg_1.second )
 	{
 		print_usage(argv[0]);
 
