@@ -29,6 +29,9 @@ struct argument{
 	int		second;
 };
 
+struct argument		arg_1;
+struct argument		*argp;
+
 /* This function enables the client to communicate with the socket */
 int socket_client(int argc,char *argv[]);
 

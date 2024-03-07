@@ -18,7 +18,7 @@
 
 void print_usage(char *parameter)
 {
-	printf("%c usage: \n",parameter);
+	printf("%s usage: \n",parameter);
 	printf("-i(--IP):please specify a specific IP address!\n");
 	printf("-p(--port):Please specify a specific port number!\n");
 	printf("-s(--second):Please give a specified time(in seconds)for temperature sampling!\n");
@@ -27,8 +27,6 @@ void print_usage(char *parameter)
 struct argument *parameter_analysis(int argc,char *argv[])
 {
 	int					ch = 0;
-	struct argument		*argp;
-	struct argument		arg_1;
 
 	argp = &arg_1;
 

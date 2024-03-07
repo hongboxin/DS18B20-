@@ -34,8 +34,6 @@ int main(int argc,char *argv[])
 	socklen_t				len = sizeof(servaddr);
 	char					buf[1024];
 	char					tem[32];
-	struct argument			*argp;
-	
 	
 	if( (fd = socket_client(argc,argv)) < 0 )
 	{
@@ -51,8 +49,12 @@ int main(int argc,char *argv[])
 		printf("Client parameter analysis failure:%s\n",strerror(errno));
 		
 		return -1;
-	}   
-			    
+	}
+
+	printf("IP:%s\n",argp->ip);
+	printf("PORT:%d\n",argp->port);
+ 	printf("SECOND:%d\n",argp->second);
+
 	memset(&servaddr,0,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port   = htons(argp->port);
