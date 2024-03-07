@@ -36,6 +36,6 @@ struct argument		*argp;
 int socket_client(int argc,char *argv[]);
 
 /* This function enables the server to communicate with the socket */
-int socket_server(int argc,char *argv[],char *listen_ip,int listen_port);
+int socket_server(int argc,char *argv[]);
 
 #endif

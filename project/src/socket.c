@@ -37,10 +37,9 @@ int socket_client(int argc,char *argv[])
 	return fd;
 }
 
-int socket_server(int argc,char *argv[],char *listen_ip,int listen_port)
+int socket_server(int argc,char *argv[])
 {
 	int						fd = 0;
-	struct argument			*argp;
 	struct sockaddr_in		servaddr;
 	int						on = 1;
 
@@ -63,8 +62,8 @@ int socket_server(int argc,char *argv[],char *listen_ip,int listen_port)
 
 	memset(&servaddr,0,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_port   = htons((*argp).port);
-	inet_pton(AF_INET,(*argp).ip,&servaddr.sin_addr);
+	servaddr.sin_port   = htons(argp->port);
+	inet_pton(AF_INET,argp->ip,&servaddr.sin_addr);
 
 	if( bind(fd,(struct sockaddr*)&servaddr,sizeof(servaddr)) < 0 )
 	{
