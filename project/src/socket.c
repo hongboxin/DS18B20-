@@ -63,7 +63,15 @@ int socket_server(int argc,char *argv[])
 	memset(&servaddr,0,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port   = htons(argp->port);
-	inet_pton(AF_INET,argp->ip,&servaddr.sin_addr);
+
+	if( !argp->ip )
+	{
+		servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	}
+	else
+	{
+		inet_pton(AF_INET,argp->ip,&servaddr.sin_addr);
+	}
 
 	if( bind(fd,(struct sockaddr*)&servaddr,sizeof(servaddr)) < 0 )
 	{

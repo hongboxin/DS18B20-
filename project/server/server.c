@@ -30,7 +30,7 @@ int main(int argc,char *argv[])
 	int						events;
 	struct epoll_event		event_stru;
 	struct epoll_event		event_array[MAX_EVENTS];
-	int						i;
+	int						i=0;
 	int						rv;
 	char					buf[1024];
 
@@ -40,8 +40,8 @@ int main(int argc,char *argv[])
 
 		return -1;
 	}
-
-	if( (epollfd = epoll_create(1)) < 0 )
+	printf("listenfd:%d\n",listenfd);
+	if( (epollfd = epoll_create(MAX_EVENTS)) < 0 )
 	{
 		printf("epoll_create() create a epoll fd failure:%s\n",strerror(errno));
 
@@ -57,7 +57,7 @@ int main(int argc,char *argv[])
 
 		return -1;
 	}
-
+	printf("epollfd:%d\n",epollfd);
 	while(1)
 	{
 		events = epoll_wait(epollfd,event_array,MAX_EVENTS,-1);
@@ -73,8 +73,8 @@ int main(int argc,char *argv[])
 
 			continue;
 		}
-
-		for(i=0; i<events; i++)
+		printf("events:%d\n",events);
+	  	for(i=0; i<events; i++)
 		{
 			if( (event_array[i].events&EPOLLERR) || (event_array[i].events&EPOLLHUP) )
 			{
@@ -83,7 +83,9 @@ int main(int argc,char *argv[])
 				close(event_array[i].data.fd);
 			}
 		}
-
+		printf("i:%d\n",i);
+		i = 0;	
+		printf("event_array[i].data.fd:%d\n",event_array[i].data.fd);
 		if( event_array[i].data.fd == listenfd )
 		{
 			if( (connfd = accept(listenfd,(struct sockaddr*)NULL,NULL)) < 0 )
@@ -92,6 +94,7 @@ int main(int argc,char *argv[])
 
 				continue;
 			}
+			printf("connfd:%d\n",connfd);
 
 			event_stru.data.fd = connfd;
 			event_stru.events  = EPOLLIN;
@@ -117,7 +120,7 @@ int main(int argc,char *argv[])
 
 			else
 			{
-				printf("Read [%d] bytes\n",rv);
+				printf("Read [%d] bytes:%s\n",rv,buf);
 
 				if( write(event_array[i].data.fd,buf,rv) < 0 )
 				{

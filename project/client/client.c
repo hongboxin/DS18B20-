@@ -59,7 +59,7 @@ int main(int argc,char *argv[])
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port   = htons(argp->port);
 	inet_aton(argp->ip,&servaddr.sin_addr);
-
+	
 	if( (rv = connect(fd,(struct sockaddr*)&servaddr,len)) < 0 )
 	{
 		printf("client connect failure:%s\n",strerror(errno));

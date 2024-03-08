@@ -31,14 +31,14 @@ struct argument *parameter_analysis(int argc,char *argv[])
 	argp = &arg_1;
 
 	struct option	opt[] = {
-		{"ip",required_argument,NULL,'i'},
+		{"ip",optional_argument,NULL,'i'},
 		{"port",required_argument,NULL,'p'},
-		{"second",required_argument,NULL,'s'},
+		{"second",optional_argument,NULL,'s'},
 		{"help",no_argument,NULL,'h'},
 		{NULL,0,NULL,0}
 	};
 	
-	while( (ch = getopt_long(argc,argv,"i:p:s:h",opt,NULL)) != -1)
+	while( (ch = getopt_long(argc,argv,"i::p:s::h",opt,NULL)) != -1)
 	{
 		switch(ch)
 		{
@@ -59,7 +59,7 @@ struct argument *parameter_analysis(int argc,char *argv[])
 		}
 	}
 	
-	if( !arg_1.ip || !arg_1.port || !arg_1.second )
+	if( !arg_1.port )
 	{
 		print_usage(argv[0]);
 
