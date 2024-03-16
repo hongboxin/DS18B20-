@@ -1,5 +1,6 @@
 /*********************************************************************************
- *      Copyright:  (C) 2024 linuxer<linuxer@email.com>
+ 
+Copyright:  (C) 2024 linuxer<linuxer@email.com>
  *                  All rights reserved.
  *
  *       Filename:  parameter.c

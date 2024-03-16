@@ -23,19 +23,49 @@ void print_usage(char *parameter);
 struct argument *parameter_analysis(int argc,char *argv[]);
 
 /* This structure is used to store information about parameters parsing */
-struct argument{
+struct argument
+{
 	char	*ip;
 	int		port;
 	int		second;
 };
 
-struct argument		arg_1;
-struct argument		*argp;
+static struct argument		arg_1;
+static struct argument		*argp;
 
-/* This function enables the client to communicate with the socket */
-int socket_client(int argc,char *argv[]);
+/*This function is used to obtain the current system time */
+int get_time(char *datime);
 
-/* This function enables the server to communicate with the socket */
-int socket_server(int argc,char *argv[]);
+/* This function is used to determine the network status*/
+int net_status(int fd);
+
+/*This function is used for client connection */
+int client_connect(int fd,struct argument *argp);
+
+/* This structure is used to hold the information that needs to be obtained */
+struct pack
+{
+	char	device[64];
+	char	datime[64];
+	float	temp;
+};
+
+/* This function is used to process the data collected by the client */
+int processing_data(int fd,struct pack packp);
+
+/*This function is used to create or open database and tables */
+int create_database(char *database_name,char *table_name);
+
+/*This function is used to insert data into the database*/
+int insert_database(char *database_name,char *table_name,struct pack *packp);
+
+/*This function is used to check whether there is data in the database*/
+int check_database(char *database_name,char *table_name);
+
+/*This function is used to get data from the database */
+int get_database(char *database_name,char *table_name,struct pack *packp);
+
+/*This function is used to delete data from the database */
+int delete_database(char *database_name,char *table_name);
 
 #endif
