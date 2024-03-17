@@ -66,6 +66,6 @@ int check_database(char *database_name,char *table_name);
 int get_database(char *database_name,char *table_name,struct pack *packp);
 
 /*This function is used to delete data from the database */
-int delete_databse(char *database_name,char *table_name);
+int delete_database(char *database_name,char *table_name);
 
 #endif

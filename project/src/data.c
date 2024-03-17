@@ -22,7 +22,7 @@ int processing_data(int fd,struct pack packp)
 	int			rv = -1;
 
 	memset(buf,0,sizeof(buf));
-	sprintf(buf,"%s %s %f\n",packp.device,packp.datime,packp.temp);
+	sprintf(buf,"%s/%s/%f\n",packp.device,packp.datime,packp.temp);
 	if( (rv = write(fd,buf,sizeof(buf))) < 0 )
 	{
 		printf("Client write failure:%s\n",strerror(errno));
