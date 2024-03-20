@@ -36,7 +36,6 @@ int	client_connect(int fd,struct argument *argp)
 		printf("Client connect failure:%s\n",strerror(errno));
 		return -1;
 	}
-	printf("Client connect successfully!\n");
 
 	return 0;
 }
@@ -98,12 +97,12 @@ int net_status(int fd)
 	getsockopt(fd,IPPROTO_TCP,TCP_INFO,&info,&len);
 	if( info.tcpi_state == TCP_ESTABLISHED )
 	{
-		printf("TCP net is normal!\n");
+		printf("\n");
 		return 1;
 	}
 	else
 	{
-		printf("TCP net is abnormal!\n");
+		printf("\n");
 		return 0;
 	}
 }

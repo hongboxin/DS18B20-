@@ -45,7 +45,8 @@ int main(int argc,char *argv[])
 	struct pack				pack_1;
 	struct pack				pack_2;
 	int						i = 0;
-
+	
+	/* 设置最大可打开文件描述数 */
 	set_rlimit();
 
 	if( (rv = create_database(database_name,table_name)) < 0 )
@@ -53,7 +54,8 @@ int main(int argc,char *argv[])
 		printf("Create or open database failure:%s\n",strerror(errno));
 		return -1;
 	}
-
+	
+	/* 服务端进行连接 */
 	listenfd = server_connect(argc,argv);
 	if( listenfd < 0 )
 	{
@@ -63,7 +65,8 @@ int main(int argc,char *argv[])
 	printf("Server create socketfd[%d] successfully!\n",listenfd);
 
 	printf("Server start to listen...\n");
-
+	
+	/* 创建epoll句柄 */
 	if( (epollfd = epoll_create(1)) < 0 )
 	{
 		printf("Server create epollfd failure:%s\n",strerror(errno));
@@ -73,7 +76,8 @@ int main(int argc,char *argv[])
 
 	event.events  = EPOLLIN;
 	event.data.fd = listenfd;
-
+	
+	/* 将listenfd加入到监听中 */
 	if( epoll_ctl(epollfd,EPOLL_CTL_ADD,listenfd,&event) < 0 )
 	{
 		printf("epoll add listenfd failure:%s\n",strerror(errno));
@@ -81,6 +85,7 @@ int main(int argc,char *argv[])
 	}
 	while(1)
 	{
+		/* 阻塞，等待客户端响应 */
 		nfds = epoll_wait(epollfd,event_array,MAX_EVENTS,-1);
 		if( nfds < 0 )
 		{
@@ -137,6 +142,7 @@ int main(int argc,char *argv[])
 				{
 					printf("Socket[%d] read %d bytes data:%s\n",event_array[i].data.fd,rv,buf);
 					
+					/* 将接收到的字符串进行解析 */
 					memset(buffer,0,sizeof(buffer));
 					strcpy(buffer,buf);
 
@@ -153,12 +159,15 @@ int main(int argc,char *argv[])
 						printf("ptr:%s\n",ptr);
 						ptr = strtok(NULL,"/");
 					}
+
+					/* 将收到的数据写进数据库 */
 					if( (rv = insert_database(database_name,table_name,&pack_1)) < 0 )
 					{
 						printf("Server insert data into database failure:%s\n",strerror(errno));
 						return -1;
 					}
-
+					
+					/* 查看写入数据库的数据 */
 					if( (rv = get_database(database_name,table_name,&pack_2)) < 0 )
 					{
 						printf("Server get data from database failure:%s\n",strerror(errno));

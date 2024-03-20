@@ -57,7 +57,7 @@ int main(int argc,char *argv[])
 		printf("Client connect failure:%s\n",strerror(errno));
 		return -1;
 	}
-	printf("Client socket fd[%d] connect successfully!\n",fd);
+	printf("Client sockfd[%d] connect successfully!\n",fd);
 
 	printf("Start to collect temperature,please wait!\n");
 	while(1)
@@ -123,7 +123,7 @@ int main(int argc,char *argv[])
 				printf("Server recreate sockfd failure:%s\n",strerror(errno));
 				return -1;
 			}
-			printf("refd:%d\n",fd);
+			
 			/*断线重连*/
 			if( (rv = client_connect(fd,argp)) < 0 )
 			{
@@ -179,11 +179,15 @@ int main(int argc,char *argv[])
 					printf("Client delete data from database failure:%s\n",strerror(errno));
 					return -1;
 				}
-				printf("4\n");
+				printf("Delete database data successfully!\n");
+				printf("Continue to check database!\n");
+				printf("\n");
 
 			}
 			
 			printf("There is no data in the database!\n");
+			printf("\n");
+			printf("Start to continue to sampling!\n");
 			
 		}
 	

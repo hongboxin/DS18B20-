@@ -167,7 +167,6 @@ int delete_database(char *database_name,char *table_name)
 		sqlite3_free(errmsg);
 		return -1;
 	}
-	printf("Delete data successfully!\n");
 
 	return 0;
 }
