@@ -29,63 +29,6 @@
 #define database_name	"server.db"
 #define table_name		"temperature"
 
-int server_connect(int argc,char *argv[])
-{
-	int						fd = 0;
-	struct sockaddr_in		servaddr;
-
-	fd = socket(AF_INET,SOCK_STREAM,0);
-	if( fd < 0 )
-	{
-		printf("Server create sockfd failure:%s\n",strerror(errno));
-		return -1;
-	}
-	
-	argp = parameter_analysis(argc,argv);
-	if( !argp )
-	{
-		printf("Parameter analysis failure:%s\n",strerror(errno));
-		return -1;
-	}
-
-	memset(&servaddr,0,sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port   = htons(argp->port);
-	if( !argp->ip )
-	{
-		servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	}
-	else
-	{
-		inet_pton(AF_INET,argp->ip,&servaddr.sin_addr);
-	}
-
-	if( bind(fd,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0 )
-	{
-		printf("Server bind the TCP socket failure:%s\n",strerror(errno));
-		return -1;
-	}
-
-	if( listen(fd,128) < 0 )
-	{
-		printf("Server listen the TCP socket failure:%s\n",strerror(errno));
-		return -1;
-	}
-	
-	return 0;
-}
-
-void set_rlimit()
-{
-	struct rlimit		limit = {0};
-
-	getrlimit(RLIMIT_NOFILE,&limit);
-	limit.rlim_cur = limit.rlim_max;
-	setrlimit(RLIMIT_NOFILE,&limit);
-
-	printf("Set socket open fd max count to %d\n",limit.rlim_max);
-}
-
 int main(int argc,char *argv[])
 {
 	int						listenfd = 0;
@@ -97,6 +40,7 @@ int main(int argc,char *argv[])
 	int						connfd = 0;
 	int						rv = -1;
 	char					buf[1024];
+	char					buffer[1024];
 	char					*ptr = NULL;
 	struct pack				pack_1;
 	struct pack				pack_2;
@@ -116,6 +60,8 @@ int main(int argc,char *argv[])
 		printf("Server establish socket communication failure:%s\n",strerror(errno));
 		return -1;
 	}
+	printf("Server create socketfd[%d] successfully!\n",listenfd);
+
 	printf("Server start to listen...\n");
 
 	if( (epollfd = epoll_create(1)) < 0 )
@@ -123,6 +69,7 @@ int main(int argc,char *argv[])
 		printf("Server create epollfd failure:%s\n",strerror(errno));
 		return -1;
 	}
+	printf("Server create epollfd[%d] successfully!\n",epollfd);
 
 	event.events  = EPOLLIN;
 	event.data.fd = listenfd;
@@ -132,7 +79,6 @@ int main(int argc,char *argv[])
 		printf("epoll add listenfd failure:%s\n",strerror(errno));
 		return -1;
 	}
-
 	while(1)
 	{
 		nfds = epoll_wait(epollfd,event_array,MAX_EVENTS,-1);
@@ -155,7 +101,8 @@ int main(int argc,char *argv[])
 				epoll_ctl(epollfd,EPOLL_CTL_DEL,event_array[i].data.fd,NULL);
 				close(event_array[i].data.fd);
 			}
-
+			
+			/* 新客户 */
 			if( event_array[i].data.fd == listenfd )
 			{
 				if( (connfd = accept(listenfd,(struct sockaddr*)NULL,NULL)) < 0 )
@@ -174,6 +121,8 @@ int main(int argc,char *argv[])
 				}
 				printf("epoll add client socket[%d] successfully!\n",connfd);
 			}
+
+			/* 已连接客户 */
 			else
 			{
 				memset(buf,0,sizeof(buf));
@@ -188,17 +137,22 @@ int main(int argc,char *argv[])
 				{
 					printf("Socket[%d] read %d bytes data:%s\n",event_array[i].data.fd,rv,buf);
 					
+					memset(buffer,0,sizeof(buffer));
+					strcpy(buffer,buf);
+
 					ptr = strtok(buf,"/");
 					while( NULL != ptr )
 					{
 						strcpy(pack_1.device,ptr);
-						strtok(NULL,"/");
+						printf("ptr:%s\n",ptr);
+						ptr = strtok(NULL,"/");
 						strcpy(pack_1.datime,ptr);
-						strtok(NULL,"/");
+						printf("ptr:%s\n",ptr);
+						ptr = strtok(NULL,"/");
 						pack_1.temp = atof(ptr);
-						strtok(NULL,"/");
+						printf("ptr:%s\n",ptr);
+						ptr = strtok(NULL,"/");
 					}
-
 					if( (rv = insert_database(database_name,table_name,&pack_1)) < 0 )
 					{
 						printf("Server insert data into database failure:%s\n",strerror(errno));
@@ -213,13 +167,14 @@ int main(int argc,char *argv[])
 					printf("Server write in database successfully!\n");
 					printf("Device:%s,DATIME:%s,TEMP:%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
 
-					if( write(event_array[i].data.fd,buf,rv) < 0 )
+					if( (rv = write(event_array[i].data.fd,buffer,strlen(buffer))) < 0 )
 					{
 						printf("Server write failure:%s\n",strerror(errno));
 						epoll_ctl(epollfd,EPOLL_CTL_DEL,event_array[i].data.fd,NULL);
 						close(event_array[i].data.fd);
 					}
 					printf("Server write to client successfully!\n");
+					printf("Server sockfd[%d] write [%d] data and data is:%s\n",event_array[i].data.fd,rv,buffer);
 				}
 			}
 		}

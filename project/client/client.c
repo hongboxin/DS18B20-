@@ -33,6 +33,7 @@ int main(int argc,char *argv[])
 	float				temp;
 	struct pack			pack_1;
 	struct pack			pack_2;
+	char				buf[1024];
 
 	/* 文件描述符 */
 	fd = socket(AF_INET,SOCK_STREAM,0);
@@ -94,7 +95,7 @@ int main(int argc,char *argv[])
 		}
 
 		/*判断网络状态 */
-		if( net_status(fd) )
+		if( net_status(fd) == 1 )
 		{
 			printf("The TCP network is normal!\n");
 			g_status = 0;
@@ -114,12 +115,19 @@ int main(int argc,char *argv[])
 				printf("Failed to write data to the database:%s\n",strerror(errno));
 				return -1;
 			}
-
+			
+			close(fd);
+			fd = socket(AF_INET,SOCK_STREAM,0);
+			if( fd < 0 )
+			{
+				printf("Server recreate sockfd failure:%s\n",strerror(errno));
+				return -1;
+			}
+			printf("refd:%d\n",fd);
 			/*断线重连*/
 			if( (rv = client_connect(fd,argp)) < 0 )
 			{
 				printf("Client reconnection failure:%s\n",strerror(errno));
-				return -1;
 			}
 
 			continue;
@@ -128,52 +136,57 @@ int main(int argc,char *argv[])
 		/*网络正常*/
 		else
 		{
-			if( (rv = processing_data(fd,pack_1)) < 0 )
+			memset(buf,0,sizeof(buf));
+			sprintf(buf,"%s/%s/%.2f\n",pack_1.device,pack_1.datime,pack_1.temp);
+			if( (rv = write(fd,buf,strlen(buf))) < 0 )
 			{
-				printf("client processing data failure:%s\n",strerror(errno));
+				printf("Client write failure:%s\n",strerror(errno));
 				return -1;
 			}
-			printf("client processing data successfully!\n");
+			printf("Client write to server successfully and [%d] data is %s\n",rv,buf);
 
-			/*检测表中是否有数据*/
-			while(1)
+			if( (rv = read(fd,buf,sizeof(buf))) < 0 )
 			{
-				/* 表中存在数据 */
-				if( check_database(database_name,table_name) )
-				{
-					/*获取第一行数据 */
-					if( (rv = get_database(database_name,table_name,&pack_2)) < 0 )
-					{
-						printf("Client get data from database failure:%s\n",strerror(errno));
-						return -1;
-					}
-
-					/*上传获取的数据*/
-					if( (rv = processing_data(fd,pack_2)) < 0 )
-					{
-						printf("Client processing database data failure:%s\n",strerror(errno));
-						return -1;
-					}
-
-					/* 删除获取到的数据 */
-					if( (rv = delete_database(database_name,table_name)) < 0 )
-					{
-						printf("Client delete data from database failure:%s\n",strerror(errno));
-						return -1;
-					}
-
-					/*重复循环，直至表中没有数据 */
-					continue;
-				}
-				
-				/* 表中不存在数据 */
-				else
-				{
-					printf("There is no data in the database or all data has been uploaded!\n");
-					return 0;
-				}
+				printf("Client read failure:%s\n",strerror(errno));
+				return -1;
 			}
+			printf("Client read from server successfully and [%d] data is %s\n",rv,buf);
+
+			/* 表中存在数据 */
+			while( check_database(database_name,table_name) )
+			{
+				/*获取第一行数据 */
+				if( (rv = get_database(database_name,table_name,&pack_2)) < 0 )
+				{
+					printf("Client get data from database failure:%s\n",strerror(errno));
+					return -1;
+				}
+				printf("DEVICE:%s,DATIME:%s,TEMP:%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
+					
+				/*上传获取的数据*/
+				memset(buf,0,sizeof(buf));
+				sprintf(buf,"%s/%s/%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
+				if( (rv = write(fd,buf,strlen(buf))) < 0 )
+				{
+					printf("Client upload the database data failure:%s\n",strerror(errno));
+					return -1;
+				}
+				printf("Client upload the [%d] database data:%s\n",rv,buf);
+					
+				/* 删除获取到的数据 */
+				if( (rv = delete_database(database_name,table_name)) < 0 )
+				{
+					printf("Client delete data from database failure:%s\n",strerror(errno));
+					return -1;
+				}
+				printf("4\n");
+
+			}
+			
+			printf("There is no data in the database!\n");
+			
 		}
+	
 	}
 
 	return 0;

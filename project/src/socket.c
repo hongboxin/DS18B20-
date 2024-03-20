@@ -41,6 +41,55 @@ int	client_connect(int fd,struct argument *argp)
 	return 0;
 }
 
+int server_connect(int argc,char *argv[])
+{
+	int					fd = 0;
+	int					on = 1;
+	struct sockaddr_in  servaddr;
+
+	fd = socket(AF_INET,SOCK_STREAM,0);
+	if( fd < 0 )
+	{
+		printf("Server create socket fd failure:%s\n",strerror(errno));
+		return -1;
+	}
+
+	argp = parameter_analysis(argc,argv);
+	if( !argp )
+	{
+		printf("Parameter analysis failure:%s\n",strerror(errno));
+		return -1;
+	}
+
+	setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(on));
+	
+	memset(&servaddr,0,sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port   = htons(argp->port);
+	if( !argp->ip )
+	{
+		servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	}
+	else
+	{
+		inet_pton(AF_INET,argp->ip,&servaddr.sin_addr);
+	}
+
+	if( bind(fd,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0 )
+	{
+		printf("Server bind the TCP socket failure:%s\n",strerror(errno));
+		return -1;
+	}
+
+	if( listen(fd,128) < 0 )
+	{
+		printf("Server listen the TCP socket failure:%s\n",strerror(errno));
+		return -1;
+	}
+
+	return fd;
+}
+
 int net_status(int fd)
 {
 	struct tcp_info		info;

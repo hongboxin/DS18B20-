@@ -126,7 +126,7 @@ int get_database(char *database_name,char *table_name,struct pack *packp)
 	}
 
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"select * from %s ORDER BY POWID ASC limit 1",table_name);
+	sprintf(sql,"select * from %s ORDER BY ROWID ASC limit 1",table_name);
 	rv = sqlite3_get_table(db,sql,&result,&row,&column,&errmsg);
 	if( rv != SQLITE_OK )
 	{
@@ -139,7 +139,6 @@ int get_database(char *database_name,char *table_name,struct pack *packp)
 	strcpy(packp->device,result[3]);
 	strcpy(packp->datime,result[4]);
 	packp->temp = atof(result[5]);
-	printf("packp->device:%s,packp->datime:%s,packp->temper:%f\n",packp->device,packp->datime,packp->temp);
 
 	sqlite3_close(db);
 	return 0;
@@ -148,6 +147,9 @@ int get_database(char *database_name,char *table_name,struct pack *packp)
 int delete_database(char *database_name,char *table_name)
 {
 	int		rv = -1;
+	char    **result;
+	int     row = 0;
+	int     column = 0;
 
 	rv = sqlite3_open(database_name,&db);
 	if( rv != SQLITE_OK )
@@ -155,9 +157,9 @@ int delete_database(char *database_name,char *table_name)
 		printf("Open database failure during deleting:%s\n",sqlite3_errmsg(db));
 		return -1;
 	}
-
+	
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"delete from %s limit 1",table_name);
+	sprintf(sql,"delete from %s where ROWID IN (SELECT ROWID FROM %s limit 1);",table_name,table_name);
 	rv = sqlite3_exec(db,sql,NULL,NULL,&errmsg);
 	if( rv != SQLITE_OK )
 	{

@@ -42,6 +42,9 @@ int net_status(int fd);
 /*This function is used for client connection */
 int client_connect(int fd,struct argument *argp);
 
+/*This function is used for server connection */
+int server_connect(int argc,char *argv[]);
+
 /* This structure is used to hold the information that needs to be obtained */
 struct pack
 {
@@ -49,9 +52,6 @@ struct pack
 	char	datime[64];
 	float	temp;
 };
-
-/* This function is used to process the data collected by the client */
-int processing_data(int fd,struct pack packp);
 
 /*This function is used to create or open database and tables */
 int create_database(char *database_name,char *table_name);
@@ -67,5 +67,8 @@ int get_database(char *database_name,char *table_name,struct pack *packp);
 
 /*This function is used to delete data from the database */
 int delete_database(char *database_name,char *table_name);
+
+/*This function is used to set open fd max socket*/
+void set_rlimit();
 
 #endif
