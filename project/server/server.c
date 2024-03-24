@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include "sqlite3.h"
 #include "project.h"
+#include "debug.h"
 
 #define MAX_EVENTS		512
 #define database_name	"server.db"
@@ -40,7 +41,6 @@ int main(int argc,char *argv[])
 	int						connfd = 0;
 	int						rv = -1;
 	char					buf[1024];
-	char					buffer[1024];
 	char					*ptr = NULL;
 	struct pack				pack_1;
 	struct pack				pack_2;
@@ -51,7 +51,7 @@ int main(int argc,char *argv[])
 
 	if( (rv = create_database(database_name,table_name)) < 0 )
 	{
-		printf("Create or open database failure:%s\n",strerror(errno));
+		DEBUG("Create or open database failure:%s\n",strerror(errno));
 		return -1;
 	}
 	
@@ -59,20 +59,20 @@ int main(int argc,char *argv[])
 	listenfd = server_connect(argc,argv);
 	if( listenfd < 0 )
 	{
-		printf("Server establish socket communication failure:%s\n",strerror(errno));
+		DEBUG("Server establish socket communication failure:%s\n",strerror(errno));
 		return -1;
 	}
-	printf("Server create socketfd[%d] successfully!\n",listenfd);
+	DEBUG("Server create socketfd[%d] successfully!\n",listenfd);
 
-	printf("Server start to listen...\n");
+	DEBUG("Server start to listen...\n");
 	
 	/* 创建epoll句柄 */
 	if( (epollfd = epoll_create(1)) < 0 )
 	{
-		printf("Server create epollfd failure:%s\n",strerror(errno));
+		DEBUG("Server create epollfd failure:%s\n",strerror(errno));
 		return -1;
 	}
-	printf("Server create epollfd[%d] successfully!\n",epollfd);
+	DEBUG("Server create epollfd[%d] successfully!\n",epollfd);
 
 	event.events  = EPOLLIN;
 	event.data.fd = listenfd;
@@ -80,7 +80,7 @@ int main(int argc,char *argv[])
 	/* 将listenfd加入到监听中 */
 	if( epoll_ctl(epollfd,EPOLL_CTL_ADD,listenfd,&event) < 0 )
 	{
-		printf("epoll add listenfd failure:%s\n",strerror(errno));
+		DEBUG("epoll add listenfd failure:%s\n",strerror(errno));
 		return -1;
 	}
 	while(1)
@@ -89,12 +89,12 @@ int main(int argc,char *argv[])
 		nfds = epoll_wait(epollfd,event_array,MAX_EVENTS,-1);
 		if( nfds < 0 )
 		{
-			printf("epoll failiure:%s\n",strerror(errno));
+			DEBUG("epoll failiure:%s\n",strerror(errno));
 			break;
 		}
 		else if( nfds == 0 )
 		{
-			printf("epoll get timeout\n",strerror);
+			DEBUG("epoll get timeout\n",strerror);
 			continue;
 		}
 
@@ -102,7 +102,7 @@ int main(int argc,char *argv[])
 		{
 			if( (event_array[i].events&EPOLLERR) || (event_array[i].events&EPOLLHUP) )
 			{
-				printf("epoll wait get error:%s\n",strerror(errno));
+				DEBUG("epoll wait get error:%s\n",strerror(errno));
 				epoll_ctl(epollfd,EPOLL_CTL_DEL,event_array[i].data.fd,NULL);
 				close(event_array[i].data.fd);
 			}
@@ -112,7 +112,7 @@ int main(int argc,char *argv[])
 			{
 				if( (connfd = accept(listenfd,(struct sockaddr*)NULL,NULL)) < 0 )
 				{
-					printf("accept new client failure:%s\n",strerror(errno));
+					DEBUG("accept new client failure:%s\n",strerror(errno));
 					continue;
 				}
 
@@ -120,7 +120,7 @@ int main(int argc,char *argv[])
 				event.events  = EPOLLIN;
 				if( epoll_ctl(epollfd,EPOLL_CTL_ADD,connfd,&event) < 0 )
 				{
-					printf("epoll add client socket failure:%s\n",strerror(errno));
+					DEBUG("epoll add client socket failure:%s\n",strerror(errno));
 					close(event_array[i].data.fd);
 					continue;
 				}
@@ -133,7 +133,7 @@ int main(int argc,char *argv[])
 				memset(buf,0,sizeof(buf));
 				if( (rv = read(event_array[i].data.fd,buf,sizeof(buf))) <= 0 )
 				{
-					printf("Server read failure or get timeout:%s\n",strerror(errno));
+					DEBUG("Server read failure or get timeout:%s\n",strerror(errno));
 					epoll_ctl(epollfd,EPOLL_CTL_DEL,event_array[i].data.fd,NULL);
 					close(event_array[i].data.fd);
 					continue;
@@ -143,47 +143,26 @@ int main(int argc,char *argv[])
 					printf("Socket[%d] read %d bytes data:%s\n",event_array[i].data.fd,rv,buf);
 					
 					/* 将接收到的字符串进行解析 */
-					memset(buffer,0,sizeof(buffer));
-					strcpy(buffer,buf);
-
 					ptr = strtok(buf,"/");
 					while( NULL != ptr )
 					{
 						strcpy(pack_1.device,ptr);
-						printf("ptr:%s\n",ptr);
 						ptr = strtok(NULL,"/");
 						strcpy(pack_1.datime,ptr);
-						printf("ptr:%s\n",ptr);
 						ptr = strtok(NULL,"/");
 						pack_1.temp = atof(ptr);
-						printf("ptr:%s\n",ptr);
 						ptr = strtok(NULL,"/");
 					}
 
 					/* 将收到的数据写进数据库 */
 					if( (rv = insert_database(database_name,table_name,&pack_1)) < 0 )
 					{
-						printf("Server insert data into database failure:%s\n",strerror(errno));
+						DEBUG("Server insert data into database failure:%s\n",strerror(errno));
 						return -1;
 					}
-					
-					/* 查看写入数据库的数据 */
-					if( (rv = get_database(database_name,table_name,&pack_2)) < 0 )
-					{
-						printf("Server get data from database failure:%s\n",strerror(errno));
-						return -1;
-					}
-					printf("Server write in database successfully!\n");
-					printf("Device:%s,DATIME:%s,TEMP:%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
-
-					if( (rv = write(event_array[i].data.fd,buffer,strlen(buffer))) < 0 )
-					{
-						printf("Server write failure:%s\n",strerror(errno));
-						epoll_ctl(epollfd,EPOLL_CTL_DEL,event_array[i].data.fd,NULL);
-						close(event_array[i].data.fd);
-					}
-					printf("Server write to client successfully!\n");
-					printf("Server sockfd[%d] write [%d] data and data is:%s\n",event_array[i].data.fd,rv,buffer);
+					printf("Server insert data successfully!\n");
+					printf("DEVICE\t\t\tDATIME\t\t\tTEMP\n");
+					printf("%s\t\t\t%s\t%.2f\n",pack_1.device,pack_1.datime,pack_1.temp);
 				}
 			}
 		}

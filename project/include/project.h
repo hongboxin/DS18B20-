@@ -48,8 +48,8 @@ int server_connect(int argc,char *argv[]);
 /* This structure is used to hold the information that needs to be obtained */
 struct pack
 {
-	char	device[64];
-	char	datime[64];
+	char	device[16];
+	char	datime[32];
 	float	temp;
 };
 

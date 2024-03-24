@@ -21,7 +21,7 @@ int get_time(char *datime)
 
 	time(&seconds);
 	local = localtime(&seconds);
-	snprintf(datime,128,"%d-%d-%d---%d:%d:%d\n",local->tm_year+1900,local->tm_mon+1,
+	snprintf(datime,128,"%d-%d-%d---%d:%d:%d",local->tm_year+1900,local->tm_mon+1,
 			local->tm_mday,local->tm_hour,local->tm_min,local->tm_sec);
 
 	return 0;

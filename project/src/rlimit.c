@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "project.h"
+#include "debug.h"
 
 void set_rlimit()
 {
@@ -22,6 +23,5 @@ void set_rlimit()
 	getrlimit(RLIMIT_NOFILE,&limit);
 	limit.rlim_cur = limit.rlim_max;
 	setrlimit(RLIMIT_NOFILE,&limit);
-	printf("Set socket open fd max count to %d\n",limit.rlim_max);
 
 }

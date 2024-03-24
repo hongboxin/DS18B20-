@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include "sqlite3.h"
 #include "project.h"
+#include "debug.h"
 
 #define SN					"ds18b20"
 #define database_name		"client.db"
@@ -39,25 +40,25 @@ int main(int argc,char *argv[])
 	fd = socket(AF_INET,SOCK_STREAM,0);
 	if( fd < 0 )
 	{
-		printf("Client create socket fd failure:%s\n",strerror(errno));
+		DEBUG("Client create socket fd failure:%s\n",strerror(errno));
 		return -1;
 	}
 
 	/* 参数解析 */
 	if( !(argp = parameter_analysis(argc,argv)) )
 	{
-		printf("Client parameter analysis failure:%s\n",strerror(errno));
+		DEBUG("Client parameter analysis failure:%s\n",strerror(errno));
 		return -1;
 	}
-	printf("parameter analysis successfully!\n");
+	DEBUG("parameter analysis successfully!\n");
 
 	/*客户端进行连接 */
 	if( (rv = client_connect(fd,argp)) < 0 )
 	{
-		printf("Client connect failure:%s\n",strerror(errno));
+		DEBUG("Client connect failure:%s\n",strerror(errno));
 		return -1;
 	}
-	printf("Client sockfd[%d] connect successfully!\n",fd);
+	DEBUG("Client sockfd[%d] connect successfully!\n",fd);
 
 	printf("Start to collect temperature,please wait!\n");
 	while(1)
@@ -67,20 +68,18 @@ int main(int argc,char *argv[])
 		/*获取采样时间*/
 		if( (rv = get_time(datime)) < 0 )
 		{
-			printf("The client failed to obtain the system time:%s\n",strerror(errno));
+			DEBUG("The client failed to obtain the system time:%s\n",strerror(errno));
 			return -1;
 		}
-		printf("The client obtain the system time successfully!\n");
-		printf("TIME:%s\n",datime);
+		DEBUG("The client obtain the system time successfully!\n");
 
 		/* 获取采样温度值 */
 		if( (rv = get_temperature(&temp)) < 0 )
 		{
-			printf("The client failed to obtain the temperature:%s\n",strerror(errno));
+			DEBUG("The client failed to obtain the temperature:%s\n",strerror(errno));
 			return -1;
 		}
-		printf("The client obtain the temperature successfully!\n");
-		printf("TEMP:%.2f\n",temp);
+		DEBUG("The client obtain the temperature successfully!\n");
 
 		memset(&pack_1,0,sizeof(pack_1));
 		strcpy(pack_1.device,SN);
@@ -90,7 +89,7 @@ int main(int argc,char *argv[])
 		/*判断数据库和表是否存在，不存在则创建*/
 		if( (rv = create_database(database_name,table_name)) < 0 )
 		{
-			printf("Client use create_database() failure:%s\n",strerror(errno));
+			DEBUG("Client use create_database() failure:%s\n",strerror(errno));
 			return -1;
 		}
 
@@ -112,7 +111,7 @@ int main(int argc,char *argv[])
 			/* 将读取信息写入数据库中 */		
 			if( (rv = insert_database(database_name,table_name,&pack_1)) < 0 )
 			{
-				printf("Failed to write data to the database:%s\n",strerror(errno));
+				DEBUG("Failed to write data to the database:%s\n",strerror(errno));
 				return -1;
 			}
 			
@@ -120,14 +119,48 @@ int main(int argc,char *argv[])
 			fd = socket(AF_INET,SOCK_STREAM,0);
 			if( fd < 0 )
 			{
-				printf("Server recreate sockfd failure:%s\n",strerror(errno));
+				DEBUG("Server recreate sockfd failure:%s\n",strerror(errno));
 				return -1;
 			}
 			
 			/*断线重连*/
 			if( (rv = client_connect(fd,argp)) < 0 )
 			{
-				printf("Client reconnection failure:%s\n",strerror(errno));
+				printf("Client reconnect failure:%s\n",strerror(errno));
+				printf("Start to continue to sampling!\n");
+			}
+			else
+			{
+				printf("Client reconnect successfully!\n");
+				while( check_database(database_name,table_name) )
+				{
+					if( (rv = get_database(database_name,table_name,&pack_2)) < 0 )
+					{
+						DEBUG("Client get data from database failure:%s\n",strerror(errno));
+						return -1;
+					}
+
+					memset(buf,0,sizeof(buf));
+					sprintf(buf,"%s/%s/%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
+					if( (rv = write(fd,buf,strlen(buf))) < 0 )
+					{
+						DEBUG("Client upload the database data failure:%s\n",strerror(errno));
+						return -1;
+					}
+					printf("Client upload the database data\n");
+					printf("DEVICE\t\t\tDATIME\t\t\tTEMP\n");
+					printf("%s\t\t\t%s\t%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
+					printf("\n");
+
+					if( (rv = delete_database(database_name,table_name)) < 0 )
+					{
+						DEBUG("Client delete data from database failure:%s\n",strerror(errno));
+						return -1;
+					}
+					DEBUG("Delete database data successfully!\n");
+					DEBUG("Continue to check database!\n");
+				}
+				printf("Start to continue to sampling!\n");
 			}
 
 			continue;
@@ -140,55 +173,10 @@ int main(int argc,char *argv[])
 			sprintf(buf,"%s/%s/%.2f\n",pack_1.device,pack_1.datime,pack_1.temp);
 			if( (rv = write(fd,buf,strlen(buf))) < 0 )
 			{
-				printf("Client write failure:%s\n",strerror(errno));
+				DEBUG("Client write failure:%s\n",strerror(errno));
 				return -1;
 			}
-			printf("Client write to server successfully and [%d] data is %s\n",rv,buf);
-
-			if( (rv = read(fd,buf,sizeof(buf))) < 0 )
-			{
-				printf("Client read failure:%s\n",strerror(errno));
-				return -1;
-			}
-			printf("Client read from server successfully and [%d] data is %s\n",rv,buf);
-
-			/* 表中存在数据 */
-			while( check_database(database_name,table_name) )
-			{
-				/*获取第一行数据 */
-				if( (rv = get_database(database_name,table_name,&pack_2)) < 0 )
-				{
-					printf("Client get data from database failure:%s\n",strerror(errno));
-					return -1;
-				}
-				printf("DEVICE:%s,DATIME:%s,TEMP:%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
-					
-				/*上传获取的数据*/
-				memset(buf,0,sizeof(buf));
-				sprintf(buf,"%s/%s/%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
-				if( (rv = write(fd,buf,strlen(buf))) < 0 )
-				{
-					printf("Client upload the database data failure:%s\n",strerror(errno));
-					return -1;
-				}
-				printf("Client upload the [%d] database data:%s\n",rv,buf);
-					
-				/* 删除获取到的数据 */
-				if( (rv = delete_database(database_name,table_name)) < 0 )
-				{
-					printf("Client delete data from database failure:%s\n",strerror(errno));
-					return -1;
-				}
-				printf("Delete database data successfully!\n");
-				printf("Continue to check database!\n");
-				printf("\n");
-
-			}
-			
-			printf("There is no data in the database!\n");
-			printf("\n");
-			printf("Start to continue to sampling!\n");
-			
+			printf("Client write to server successfully and [%d] data is %s\n",rv,buf);	
 		}
 	
 	}

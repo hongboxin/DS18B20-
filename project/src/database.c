@@ -30,7 +30,6 @@ int	create_database(char *database_name,char *table_name)
 		printf("Create or open database failure:%s\n",sqlite3_errmsg(db));
 		return -1;
 	}
-	printf("Create or open database successfully!\n");
 
 	memset(sql,0,sizeof(sql));
 	sprintf(sql,"create table if not exists %s(Device_name text,Sampling_time text,Sampling_temperature real)",table_name);
@@ -41,7 +40,6 @@ int	create_database(char *database_name,char *table_name)
 		sqlite3_free(errmsg);
 		return -1;
 	}
-	printf("Create table successfully!\n");
 
 	sqlite3_close(db);
 	return 0;
