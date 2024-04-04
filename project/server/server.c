@@ -42,8 +42,7 @@ int main(int argc,char *argv[])
 	int						rv = -1;
 	char					buf[1024];
 	char					*ptr = NULL;
-	struct pack				pack_1;
-	struct pack				pack_2;
+	pack_info_t				pack;
 	int						i = 0;
 	
 	/* 设置最大可打开文件描述数 */
@@ -62,8 +61,6 @@ int main(int argc,char *argv[])
 		DEBUG("Server establish socket communication failure:%s\n",strerror(errno));
 		return -1;
 	}
-	DEBUG("Server create socketfd[%d] successfully!\n",listenfd);
-
 	DEBUG("Server start to listen...\n");
 	
 	/* 创建epoll句柄 */
@@ -140,29 +137,29 @@ int main(int argc,char *argv[])
 				}
 				else
 				{
-					printf("Socket[%d] read %d bytes data:%s\n",event_array[i].data.fd,rv,buf);
+					printf("Socket[%d] read %d bytes data:%s",event_array[i].data.fd,rv,buf);
 					
 					/* 将接收到的字符串进行解析 */
 					ptr = strtok(buf,"/");
 					while( NULL != ptr )
 					{
-						strcpy(pack_1.device,ptr);
+						strcpy(pack.device,ptr);
 						ptr = strtok(NULL,"/");
-						strcpy(pack_1.datime,ptr);
+						strcpy(pack.datime,ptr);
 						ptr = strtok(NULL,"/");
-						pack_1.temp = atof(ptr);
+						pack.temp = atof(ptr);
 						ptr = strtok(NULL,"/");
 					}
 
 					/* 将收到的数据写进数据库 */
-					if( (rv = insert_database(database_name,table_name,&pack_1)) < 0 )
+					if( (rv = write_database(database_name,table_name,&pack)) < 0 )
 					{
 						DEBUG("Server insert data into database failure:%s\n",strerror(errno));
 						return -1;
 					}
 					printf("Server insert data successfully!\n");
 					printf("DEVICE\t\t\tDATIME\t\t\tTEMP\n");
-					printf("%s\t\t\t%s\t%.2f\n",pack_1.device,pack_1.datime,pack_1.temp);
+					printf("%s\t\t%s\t%.2f\n",pack.device,pack.datime,pack.temp);
 				}
 			}
 		}

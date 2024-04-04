@@ -27,3 +27,18 @@ int get_time(char *datime)
 	return 0;
 }
 
+int check_time(time_t *last_time,int interval)
+{
+	time_t		now_time;
+	int			rv = 0;
+
+	time(&now_time);
+
+	if( now_time >= *last_time + interval )
+	{
+		rv = 1;
+		*last_time = now_time;
+	}
+	
+	return rv;
+}

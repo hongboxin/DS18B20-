@@ -17,41 +17,47 @@
 #include "project.h"
 
 static sqlite3		*db;
+char		sql[128];
+char		*errmsg = NULL;
 
-sqlite3 *open_database()
+int	create_database(char *database_name,char *table_name)
 {
 	int			rv = -1;
-	char 		sql[128];
-	char		*errmsg = NULL;
 
-	if( (rv = sqlite3_open("client.db",&db)) < 0 )
+	rv = sqlite3_open(database_name,&db);
+	if( rv != SQLITE_OK )
 	{
-		printf("Open database failure:%s\n",sqlite3_errmsg(db));
-		return NULL;
+		printf("Create or open database failure:%s\n",sqlite3_errmsg(db));
+		return -1;
 	}
 
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"create table if not exists temperature(Device_name text, Sampling_time text,Sampling_temperature real)");
+	sprintf(sql,"create table if not exists %s(Device_name text,Sampling_time text,Sampling_temperature real)",table_name);
 	rv = sqlite3_exec(db,sql,NULL,NULL,&errmsg);
 	if( rv != SQLITE_OK )
 	{
 		printf("Create table failure:%s\n",errmsg);
 		sqlite3_free(errmsg);
-		sqlite3_close(db);
-		return NULL;
+		return -1;
 	}
 
-	return db;
+	sqlite3_close(db);
+	return 0;
 }
 
-int insert_database(sqlite3 *db,pack_info_t *packp)
+int write_database(char *database_name,char *table_name,pack_info_t *packp)
 {
 	int			rv = -1;
-	char		sql[128];
-	char		*errmsg = NULL;
+
+	rv = sqlite3_open(database_name,&db);
+	if( rv != SQLITE_OK )
+	{
+		printf("Open database failure during inserting:%s\n",sqlite3_errmsg(db));
+		return -1;
+	}
 
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"insert into temperature values('%s','%s','%f')",packp->device,packp->datime,packp->temp);
+	sprintf(sql,"insert into %s values('%s','%s','%f')",table_name,packp->device,packp->datime,packp->temp);
 	rv = sqlite3_exec(db,sql,NULL,NULL,&errmsg);
 	if( rv != SQLITE_OK )
 	{
@@ -60,20 +66,27 @@ int insert_database(sqlite3 *db,pack_info_t *packp)
 		return -1;
 	}
 
+	sqlite3_close(db);
 	return 0;
 }
 
-int check_database(sqlite3 *db)
+#if 0
+int check_database(char *database_name,char *table_name)
 {
 	int			rv = -1;
 	char		**result;
 	int			row = 0;
 	int			column = 0;
-	char		sql[128];
-	char		*errmsg = NULL;
+
+	rv = sqlite3_open(database_name,&db);
+	if( rv != SQLITE_OK )
+	{
+		printf("Open database failure during checking:%s\n",sqlite3_close(db));
+		return -1;
+	}
 
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"select * from temperature");
+	sprintf(sql,"select * from %s",table_name);
 	rv = sqlite3_get_table(db,sql,&result,&row,&column,&errmsg);
 	if( rv != SQLITE_OK )
 	{
@@ -85,27 +98,34 @@ int check_database(sqlite3 *db)
 	{
 		if( row > 0 )
 		{
+			printf("There is data in the database!\n");
 			return row;
 		}
 		else
 		{
+			printf("There is not data in the database!\n");
 			return 0;
 		}
 	}
 
 }
 
-int get_database(sqlite3 *db,pack_info_t *packp)
+int get_database(char *database_name,char *table_name,struct pack *packp)
 {
 	int		rv = -1;
 	char	**result;
 	int		row = 0;
 	int		column = 0;
-	char	sql[128];
-	char	*errmsg = NULL;
+
+	rv = sqlite3_open(database_name,&db);
+	if( rv != SQLITE_OK )
+	{
+		printf("Open database failure during getting:%s\n",sqlite3_errmsg(db));
+		return -1;
+	}
 
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"select * from temperature ORDER BY ROWID ASC limit 1");
+	sprintf(sql,"select * from %s ORDER BY ROWID ASC limit 1",table_name);
 	rv = sqlite3_get_table(db,sql,&result,&row,&column,&errmsg);
 	if( rv != SQLITE_OK )
 	{
@@ -119,20 +139,27 @@ int get_database(sqlite3 *db,pack_info_t *packp)
 	strcpy(packp->datime,result[4]);
 	packp->temp = atof(result[5]);
 
+	sqlite3_close(db);
 	return 0;
 }
 
-int delete_database(sqlite3 *db)
+
+int delete_database(char *database_name,char *table_name)
 {
 	int		rv = -1;
 	char    **result;
 	int     row = 0;
 	int     column = 0;
-	char	sql[128];
-	char	*errmsg = NULL;
 
+	rv = sqlite3_open(database_name,&db);
+	if( rv != SQLITE_OK )
+	{
+		printf("Open database failure during deleting:%s\n",sqlite3_errmsg(db));
+		return -1;
+	}
+	
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"delete from temperature where ROWID IN (SELECT ROWID FROM temperature limit 1);");
+	sprintf(sql,"delete from %s where ROWID IN (SELECT ROWID FROM %s limit 1);",table_name,table_name);
 	rv = sqlite3_exec(db,sql,NULL,NULL,&errmsg);
 	if( rv != SQLITE_OK )
 	{
@@ -143,4 +170,4 @@ int delete_database(sqlite3 *db)
 
 	return 0;
 }
-
+#endif

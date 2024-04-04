@@ -20,11 +20,11 @@
 #include "project.h"
 #include "debug.h"
 
-#define SN					"ds18b20"
-#define database_name		"client.db"
-#define table_name			"temperature"
+#define SN			"rpi#0001"
 
-int		g_status;
+int					g_signal;
+static int			g_status;
+static sqlite3		*db;
 
 int main(int argc,char *argv[])
 {
@@ -32,17 +32,10 @@ int main(int argc,char *argv[])
 	int					rv = -1;
 	char				datime[128];
 	float				temp;
-	struct pack			pack_1;
-	struct pack			pack_2;
+	pack_info_t			pack;
 	char				buf[1024];
-
-	/* 文件描述符 */
-	fd = socket(AF_INET,SOCK_STREAM,0);
-	if( fd < 0 )
-	{
-		DEBUG("Client create socket fd failure:%s\n",strerror(errno));
-		return -1;
-	}
+	int					flag = 0;
+	time_t				last_time = 0;
 
 	/* 参数解析 */
 	if( !(argp = parameter_analysis(argc,argv)) )
@@ -50,117 +43,101 @@ int main(int argc,char *argv[])
 		DEBUG("Client parameter analysis failure:%s\n",strerror(errno));
 		return -1;
 	}
-	DEBUG("parameter analysis successfully!\n");
 
 	/*客户端进行连接 */
-	if( (rv = client_connect(fd,argp)) < 0 )
+	if( (fd = client_connect(argp)) < 0 )
 	{
 		DEBUG("Client connect failure:%s\n",strerror(errno));
 		return -1;
 	}
-	DEBUG("Client sockfd[%d] connect successfully!\n",fd);
+	
+	/*  安装信号 */ 
+	install_signal();
 
-	printf("Start to collect temperature,please wait!\n");
-	while(1)
+	/* 打开数据库 */
+	db = open_database();
+	if( !db )
 	{
-		sleep(argp->second);
+		DEBUG("Client open database failure:%s\n",strerror(errno));
+		return -1;
+	}
 
-		/*获取采样时间*/
-		if( (rv = get_time(datime)) < 0 )
+	while( !g_signal )
+	{
+		flag = 0;
+		/* 判断是否进行采样 */
+		if( check_time(&last_time,argp->second) )
 		{
-			DEBUG("The client failed to obtain the system time:%s\n",strerror(errno));
-			return -1;
-		}
-		DEBUG("The client obtain the system time successfully!\n");
+			/*获取采样时间*/
+			if( (rv = get_time(datime)) < 0 )
+			{
+				DEBUG("The client failed to obtain the system time:%s\n",strerror(errno));
+				return -1;
+			}
+			DEBUG("The client obtain the system time successfully!\n");
 
-		/* 获取采样温度值 */
-		if( (rv = get_temperature(&temp)) < 0 )
-		{
-			DEBUG("The client failed to obtain the temperature:%s\n",strerror(errno));
-			return -1;
-		}
-		DEBUG("The client obtain the temperature successfully!\n");
+			/* 获取采样温度值 */
+			if( (rv = get_temperature(&temp)) < 0 )
+			{
+				DEBUG("The client failed to obtain the temperature:%s\n",strerror(errno));
+				return -1;
+			}
+			DEBUG("The client obtain the temperature successfully!\n");
 
-		memset(&pack_1,0,sizeof(pack_1));
-		strcpy(pack_1.device,SN);
-		strcpy(pack_1.datime,datime);
-		pack_1.temp = temp;
+			memset(&pack,0,sizeof(pack));
+			strcpy(pack.device,SN);
+			strcpy(pack.datime,datime);
+			pack.temp = temp;
 
-		/*判断数据库和表是否存在，不存在则创建*/
-		if( (rv = create_database(database_name,table_name)) < 0 )
-		{
-			DEBUG("Client use create_database() failure:%s\n",strerror(errno));
-			return -1;
+			flag = 1;
 		}
 
 		/*判断网络状态 */
 		if( net_status(fd) == 1 )
 		{
-			printf("The TCP network is normal!\n");
+			DEBUG("The TCP network is normal!\n");
 			g_status = 0;
 		}
 		else
 		{
-			printf("The TCP network is abnormal!\n");
+			DEBUG("The TCP network is abnormal!\n");
 			g_status = 1;
 		}
 
 		/*网络异常*/
 		if( g_status )
-		{
-			/* 将读取信息写入数据库中 */		
-			if( (rv = insert_database(database_name,table_name,&pack_1)) < 0 )
-			{
-				DEBUG("Failed to write data to the database:%s\n",strerror(errno));
-				return -1;
-			}
-			
+		{		
 			close(fd);
-			fd = socket(AF_INET,SOCK_STREAM,0);
-			if( fd < 0 )
-			{
-				DEBUG("Server recreate sockfd failure:%s\n",strerror(errno));
-				return -1;
-			}
 			
 			/*断线重连*/
-			if( (rv = client_connect(fd,argp)) < 0 )
+			if( (fd = client_connect(argp)) < 0 )
 			{
-				printf("Client reconnect failure:%s\n",strerror(errno));
-				printf("Start to continue to sampling!\n");
+				/* 重连失败*/
+				DEBUG("Client reconnect failure:%s\n",strerror(errno));
+				if( (rv = insert_database(db,&pack)) < 0 )
+				{
+					DEBUG("Failed to write data to the database:%s\n",strerror(errno));
+				}
+				DEBUG("Start to continue to sampling!\n");
 			}
 			else
 			{
-				printf("Client reconnect successfully!\n");
-				while( check_database(database_name,table_name) )
+				/*重连成功*/
+				DEBUG("Client reconnect successfully!\n");
+				
+				if( flag )
 				{
-					if( (rv = get_database(database_name,table_name,&pack_2)) < 0 )
+					if( (rv = send_data(fd,buf,pack)) < 0 )
 					{
-						DEBUG("Client get data from database failure:%s\n",strerror(errno));
-						return -1;
+						insert_database(db,&pack);
+						printf("Client send data failure and write it to database:%s\n",buf);
 					}
-
-					memset(buf,0,sizeof(buf));
-					sprintf(buf,"%s/%s/%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
-					if( (rv = write(fd,buf,strlen(buf))) < 0 )
+					else
 					{
-						DEBUG("Client upload the database data failure:%s\n",strerror(errno));
-						return -1;
+						printf("Client send data:%s\n",buf);
 					}
-					printf("Client upload the database data\n");
-					printf("DEVICE\t\t\tDATIME\t\t\tTEMP\n");
-					printf("%s\t\t\t%s\t%.2f\n",pack_2.device,pack_2.datime,pack_2.temp);
-					printf("\n");
-
-					if( (rv = delete_database(database_name,table_name)) < 0 )
-					{
-						DEBUG("Client delete data from database failure:%s\n",strerror(errno));
-						return -1;
-					}
-					DEBUG("Delete database data successfully!\n");
-					DEBUG("Continue to check database!\n");
 				}
-				printf("Start to continue to sampling!\n");
+				DEBUG("Start to continue to sampling!\n");
 			}
 
 			continue;
@@ -169,17 +146,49 @@ int main(int argc,char *argv[])
 		/*网络正常*/
 		else
 		{
-			memset(buf,0,sizeof(buf));
-			sprintf(buf,"%s/%s/%.2f\n",pack_1.device,pack_1.datime,pack_1.temp);
-			if( (rv = write(fd,buf,strlen(buf))) < 0 )
+			if( flag )
 			{
-				DEBUG("Client write failure:%s\n",strerror(errno));
-				return -1;
+				if( (rv = send_data(fd,buf,pack)) < 0 )
+				{
+					insert_database(db,&pack);
+					printf("Client send data failure and write it to database:%s\n",buf);
+				}
+				else
+				{
+					printf("Client send data:%s\n",buf);
+				}
 			}
-			printf("Client write to server successfully and [%d] data is %s\n",rv,buf);	
+			
+			/* 查看数据库中是否存在数据 */
+			if( check_database(db) )
+			{
+				memset(&pack,0,sizeof(pack));
+				if( (rv = get_database(db,&pack)) < 0 )
+				{
+					DEBUG("Client get data from database failure:%s\n",strerror(errno));
+				}
+				
+				if( (rv = send_data(fd,buf,pack)) < 0 )
+				{
+					insert_database(db,&pack);
+					printf("Client send data failure and write it to database:%s\n",buf);
+				}
+				else
+				{
+					printf("Client send data:%s\n",buf);
+				}
+
+				if( (rv = delete_database(db)) < 0 )
+				{
+					DEBUG("Client delete data from database failure:%s\n",strerror(errno));
+				}
+			}
 		}
 	
 	}
+	
+	close(fd);
+	sqlite3_close(db);
 
 	return 0;
 }

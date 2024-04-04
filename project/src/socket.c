@@ -18,26 +18,54 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/tcp.h>
+#include <unistd.h>
+#include <netdb.h>
 #include "project.h"
 
-int	client_connect(int fd,struct argument *argp)
+int	client_connect(arg_ctx_t *argp)
 {
-	struct sockaddr_in		servaddr;
-	socklen_t				len = sizeof(servaddr);
+	int						fd = -1;
 	int						rv = 0;
+	char					service[20];
+	struct addrinfo    	    hints, *rp;
+	struct addrinfo   		*res = NULL;
+	struct in_addr     		inaddr;
+	struct sockaddr_in  	addr;
+	int                 	len = sizeof(addr);
 
-	memset(&servaddr,0,sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port   = htons(argp->port);
-	inet_aton(argp->ip,&servaddr.sin_addr);
+	memset(&hints,0,sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
 
-	if( (rv = connect(fd,(struct sockaddr *)&servaddr,len)) < 0 )
+	if( inet_aton(argp->ip, &inaddr) )
 	{
-		printf("Client connect failure:%s\n",strerror(errno));
+		hints.ai_flags |= AI_NUMERICHOST;
+	}
+	snprintf(service,sizeof(service),"%d",argp->port);
+
+	if( (rv=getaddrinfo(argp->ip, service, &hints, &res)) )
+	{
+		printf("getaddrinfo() failure:%s\n",strerror(errno));
 		return -1;
 	}
 
-	return 0;
+	for (rp=res; rp!=NULL; rp=rp->ai_next)
+	{
+		fd = socket(rp->ai_family,rp->ai_socktype,0);
+		if( fd < 0 )
+		{
+			printf("Create socket fd failure:%s\n",strerror(errno));
+			return -1;
+		}
+
+		if( (rv = connect(fd,rp->ai_addr,len)) < 0 )
+		{
+			close(fd);
+			continue;
+		}
+	}
+
+	return fd;
 }
 
 int server_connect(int argc,char *argv[])
@@ -97,14 +125,25 @@ int net_status(int fd)
 	getsockopt(fd,IPPROTO_TCP,TCP_INFO,&info,&len);
 	if( info.tcpi_state == TCP_ESTABLISHED )
 	{
-		printf("\n");
 		return 1;
 	}
 	else
 	{
-		printf("\n");
 		return 0;
 	}
 }
 
+int send_data(int fd,char *buf,pack_info_t pack)
+{
+	int 		rv = -1;
 
+	memset(buf,0,sizeof(buf));
+	sprintf(buf,"%s/%s/%.2f\n",pack.device,pack.datime,pack.temp);
+	if( (rv = write(fd,buf,strlen(buf))) < 0 )
+	{
+		printf("Client write failure:%s\n",strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
