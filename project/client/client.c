@@ -16,9 +16,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
 #include "sqlite3.h"
 #include "project.h"
 #include "debug.h"
+#include "logger.h"
 
 #define SN			"rpi#0001"
 
@@ -36,21 +38,24 @@ int main(int argc,char *argv[])
 	char				buf[1024];
 	int					flag = 0;
 	time_t				last_time = 0;
+	char                *logfile="client.log";
+	int                 loglevel=LOG_LEVEL_INFO;
+	int                 logsize=10;
 
 	/* 参数解析 */
 	if( !(argp = parameter_analysis(argc,argv)) )
 	{
-		DEBUG("Client parameter analysis failure:%s\n",strerror(errno));
+		printf("Client parameter analysis failure:%s\n",strerror(errno));
 		return -1;
 	}
 
 	/*客户端进行连接 */
 	if( (fd = client_connect(argp)) < 0 )
 	{
-		DEBUG("Client connect failure:%s\n",strerror(errno));
+		printf("Client connect failure:%s\n",strerror(errno));
 		return -1;
 	}
-	
+
 	/*  安装信号 */ 
 	install_signal();
 
@@ -58,7 +63,13 @@ int main(int argc,char *argv[])
 	db = open_database();
 	if( !db )
 	{
-		DEBUG("Client open database failure:%s\n",strerror(errno));
+		printf("Client open database failure:%s\n",strerror(errno));
+		return -1;
+	}
+
+	if( log_open(logfile, loglevel, logsize, THREAD_LOCK_NONE) < 0 )
+	{
+		printf("Initial log system failed:%s\n",strerror(errno));
 		return -1;
 	}
 
@@ -71,18 +82,16 @@ int main(int argc,char *argv[])
 			/*获取采样时间*/
 			if( (rv = get_time(datime)) < 0 )
 			{
-				DEBUG("The client failed to obtain the system time:%s\n",strerror(errno));
-				return -1;
+				log_error("The client failed to obtain the system time:%s\n",strerror(errno));
 			}
-			DEBUG("The client obtain the system time successfully!\n");
+			log_debug("The client obtain the system time successfully!\n");
 
 			/* 获取采样温度值 */
 			if( (rv = get_temperature(&temp)) < 0 )
 			{
-				DEBUG("The client failed to obtain the temperature:%s\n",strerror(errno));
-				return -1;
+				log_error("The client failed to obtain the temperature:%s\n",strerror(errno));
 			}
-			DEBUG("The client obtain the temperature successfully!\n");
+			log_debug("The client obtain the temperature successfully!\n");
 
 			memset(&pack,0,sizeof(pack));
 			strcpy(pack.device,SN);
@@ -95,12 +104,12 @@ int main(int argc,char *argv[])
 		/*判断网络状态 */
 		if( net_status(fd) == 1 )
 		{
-			DEBUG("The TCP network is normal!\n");
+			log_debug("The TCP network is normal!\n");
 			g_status = 0;
 		}
 		else
 		{
-			DEBUG("The TCP network is abnormal!\n");
+			log_debug("The TCP network is abnormal!\n");
 			g_status = 1;
 		}
 
@@ -113,31 +122,31 @@ int main(int argc,char *argv[])
 			if( (fd = client_connect(argp)) < 0 )
 			{
 				/* 重连失败*/
-				DEBUG("Client reconnect failure:%s\n",strerror(errno));
+				log_debug("Client reconnect failure:%s\n",strerror(errno));
 				if( (rv = insert_database(db,&pack)) < 0 )
 				{
-					DEBUG("Failed to write data to the database:%s\n",strerror(errno));
+					log_warn("Failed to write data to the database:%s\n",strerror(errno));
 				}
-				DEBUG("Start to continue to sampling!\n");
+				log_debug("Start to continue to sampling!\n");
 			}
 			else
 			{
 				/*重连成功*/
-				DEBUG("Client reconnect successfully!\n");
+				log_debug("Client reconnect successfully!\n");
 				
 				if( flag )
 				{
 					if( (rv = send_data(fd,buf,pack)) < 0 )
 					{
 						insert_database(db,&pack);
-						printf("Client send data failure and write it to database:%s\n",buf);
+						log_warn("Client send data failure and write it to database:%s\n",buf);
 					}
 					else
 					{
-						printf("Client send data:%s\n",buf);
+						log_info("Client send data:%s\n",buf);
 					}
 				}
-				DEBUG("Start to continue to sampling!\n");
+				log_debug("Start to continue to sampling!\n");
 			}
 
 			continue;
@@ -151,11 +160,11 @@ int main(int argc,char *argv[])
 				if( (rv = send_data(fd,buf,pack)) < 0 )
 				{
 					insert_database(db,&pack);
-					printf("Client send data failure and write it to database:%s\n",buf);
+					log_warn("Client send data failure and write it to database:%s\n",buf);
 				}
 				else
 				{
-					printf("Client send data:%s\n",buf);
+					log_info("Client send data:%s\n",buf);
 				}
 			}
 			
@@ -165,22 +174,22 @@ int main(int argc,char *argv[])
 				memset(&pack,0,sizeof(pack));
 				if( (rv = get_database(db,&pack)) < 0 )
 				{
-					DEBUG("Client get data from database failure:%s\n",strerror(errno));
+					log_error("Client get data from database failure:%s\n",strerror(errno));
 				}
 				
 				if( (rv = send_data(fd,buf,pack)) < 0 )
 				{
 					insert_database(db,&pack);
-					printf("Client send data failure and write it to database:%s\n",buf);
+					log_warn("Client send data failure and write it to database:%s\n",buf);
 				}
 				else
 				{
-					printf("Client send data:%s\n",buf);
+					log_info("Client send data:%s\n",buf);
 				}
 
 				if( (rv = delete_database(db)) < 0 )
 				{
-					DEBUG("Client delete data from database failure:%s\n",strerror(errno));
+					log_error("Client delete data from database failure:%s\n",strerror(errno));
 				}
 			}
 		}

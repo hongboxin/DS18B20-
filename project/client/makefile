@@ -15,6 +15,7 @@ all:
 clean:
 	rm client.db
 	rm client
+	rm client.log
 
 client_run:
 	export LD_LIBRARY_PATH=/home/iot24/xinhongbo/project/lib/ && ./client -i127.0.0.1 -p 8787 -s10

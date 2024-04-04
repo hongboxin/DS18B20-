@@ -141,7 +141,6 @@ int send_data(int fd,char *buf,pack_info_t pack)
 	sprintf(buf,"%s/%s/%.2f\n",pack.device,pack.datime,pack.temp);
 	if( (rv = write(fd,buf,strlen(buf))) < 0 )
 	{
-		printf("Client write failure:%s\n",strerror(errno));
 		return -1;
 	}
 
