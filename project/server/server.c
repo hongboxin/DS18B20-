@@ -22,13 +22,19 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <stdlib.h>
+
 #include "sqlite3.h"
 #include "project.h"
 #include "debug.h"
+#include "database.h"
+#include "parameter.h"
+#include "socket.h"
 
 #define MAX_EVENTS		512
 #define database_name	"server.db"
 #define table_name		"temperature"
+
+void set_rlimit(void);
 
 int main(int argc,char *argv[])
 {
@@ -44,18 +50,19 @@ int main(int argc,char *argv[])
 	char					*ptr = NULL;
 	pack_info_t				pack;
 	int						i = 0;
+	int						port = 8787;
 	
-	/* 设置最大可打开文件描述数 */
-	set_rlimit();
-
 	if( (rv = create_database(database_name,table_name)) < 0 )
 	{
 		DEBUG("Create or open database failure:%s\n",strerror(errno));
 		return -1;
 	}
-	
+
+	/*  设置最大可打开文件描述数 */
+	set_rlimit();
+
 	/* 服务端进行连接 */
-	listenfd = server_connect(argc,argv);
+	listenfd = server_connect(NULL,port);
 	if( listenfd < 0 )
 	{
 		DEBUG("Server establish socket communication failure:%s\n",strerror(errno));
@@ -166,4 +173,15 @@ int main(int argc,char *argv[])
 	}
 	
 	return 0;
+}
+
+void set_rlimit(void)
+{
+	struct rlimit       limit = {0};
+
+	getrlimit(RLIMIT_NOFILE,&limit);
+	limit.rlim_cur = limit.rlim_max;
+	setrlimit(RLIMIT_NOFILE,&limit);
+
+	return ;
 }

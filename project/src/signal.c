@@ -12,7 +12,7 @@
  ********************************************************************************/
 #include <stdio.h>
 #include <signal.h>
-#include "project.h"
+#include "mysignal.h"
 
 int 		g_signal = 0;
 

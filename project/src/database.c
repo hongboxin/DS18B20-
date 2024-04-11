@@ -18,7 +18,7 @@
 
 static sqlite3		*db;
 
-sqlite3 *open_database()
+sqlite3 *open_database(char *table_name)
 {
 	int			rv = -1;
 	char 		sql[128];
@@ -31,7 +31,7 @@ sqlite3 *open_database()
 	}
 
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"create table if not exists temperature(Device_name text, Sampling_time text,Sampling_temperature real)");
+	sprintf(sql,"create table if not exists %s(Device_name text, Sampling_time text,Sampling_temperature real)",table_name);
 	rv = sqlite3_exec(db,sql,NULL,NULL,&errmsg);
 	if( rv != SQLITE_OK )
 	{
@@ -44,14 +44,14 @@ sqlite3 *open_database()
 	return db;
 }
 
-int insert_database(sqlite3 *db,pack_info_t *packp)
+int insert_database(sqlite3 *db,char *table_name,pack_info_t *packp)
 {
 	int			rv = -1;
 	char		sql[128];
 	char		*errmsg = NULL;
 
 	memset(sql,0,sizeof(sql));
-	sprintf(sql,"insert into temperature values('%s','%s','%f')",packp->device,packp->datime,packp->temp);
+	sprintf(sql,"insert into %s values('%s','%s','%f')",table_name,packp->device,packp->datime,packp->temp);
 	rv = sqlite3_exec(db,sql,NULL,NULL,&errmsg);
 	if( rv != SQLITE_OK )
 	{
@@ -63,7 +63,7 @@ int insert_database(sqlite3 *db,pack_info_t *packp)
 	return 0;
 }
 
-int check_database(sqlite3 *db)
+int check_database(sqlite3 *db,char *table_name)
 {
 	int			rv = -1;
 	char		**result;
@@ -95,7 +95,7 @@ int check_database(sqlite3 *db)
 
 }
 
-int get_database(sqlite3 *db,pack_info_t *packp)
+int get_database(sqlite3 *db,char *table_name,pack_info_t *packp)
 {
 	int		rv = -1;
 	char	**result;
@@ -122,7 +122,7 @@ int get_database(sqlite3 *db,pack_info_t *packp)
 	return 0;
 }
 
-int delete_database(sqlite3 *db)
+int delete_database(sqlite3 *db,char *table_name)
 {
 	int		rv = -1;
 	char    **result;

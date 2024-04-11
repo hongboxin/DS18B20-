@@ -17,4 +17,4 @@ clean:
 	rm server
 
 server_run:
-	export LD_LIBRARY_PATH=/home/iot24/xinhongbo/project/lib/ && ./server -p 8787
+	export LD_LIBRARY_PATH=/home/iot24/xinhongbo/project/lib/ && ./server

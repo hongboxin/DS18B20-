@@ -16,5 +16,5 @@ client_run:
 clean:
 	make clean -C src
 	make clean -C server
-	make clean -C client
 	rm ./lib/libproject.*
+	make clean -C client

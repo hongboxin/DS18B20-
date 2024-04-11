@@ -20,7 +20,9 @@
 #include <netinet/tcp.h>
 #include <unistd.h>
 #include <netdb.h>
+
 #include "project.h"
+#include "parameter.h"
 
 int	client_connect(arg_ctx_t *argp)
 {
@@ -68,7 +70,7 @@ int	client_connect(arg_ctx_t *argp)
 	return fd;
 }
 
-int server_connect(int argc,char *argv[])
+int server_connect(char *ip,int port)
 {
 	int					fd = 0;
 	int					on = 1;
@@ -81,25 +83,18 @@ int server_connect(int argc,char *argv[])
 		return -1;
 	}
 
-	argp = parameter_analysis(argc,argv);
-	if( !argp )
-	{
-		printf("Parameter analysis failure:%s\n",strerror(errno));
-		return -1;
-	}
-
 	setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(on));
 	
 	memset(&servaddr,0,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_port   = htons(argp->port);
-	if( !argp->ip )
+	servaddr.sin_port   = htons(port);
+	if( !ip )
 	{
 		servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	}
 	else
 	{
-		inet_pton(AF_INET,argp->ip,&servaddr.sin_addr);
+		inet_pton(AF_INET,ip,&servaddr.sin_addr);
 	}
 
 	if( bind(fd,(struct sockaddr *)&servaddr,sizeof(servaddr)) < 0 )

@@ -12,7 +12,7 @@
  ********************************************************************************/
 #include <stdio.h>
 #include <time.h>
-#include "project.h"
+#include "mytime.h"
 
 int get_time(char *datime)
 {
@@ -31,10 +31,12 @@ int check_time(time_t *last_time,int interval)
 {
 	time_t		now_time;
 	int			rv = 0;
+	double		diff;
 
 	time(&now_time);
+	diff = difftime(now_time,*last_time);
 
-	if( now_time >= *last_time + interval )
+	if( diff >= (double)interval )
 	{
 		rv = 1;
 		*last_time = now_time;
