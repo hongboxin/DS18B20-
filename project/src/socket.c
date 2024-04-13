@@ -131,13 +131,30 @@ int net_status(int fd)
 int send_data(int fd,char *buf,pack_info_t pack)
 {
 	int 		rv = -1;
+	int			i  = 0;
+	int			left_bytes = 0;
 
 	memset(buf,0,sizeof(buf));
 	sprintf(buf,"%s/%s/%.2f\n",pack.device,pack.datime,pack.temp);
-	if( (rv = write(fd,buf,strlen(buf))) < 0 )
+	
+	while( (left_bytes = strlen(buf)) > 0 )
 	{
-		return -1;
+		rv = write(fd,&buf[i],left_bytes);
+		if( rv < 0 )
+		{
+			printf("Write data failure:%s\n",strerror(errno));
+			return -1;
+		}
+		else if(rv == left_bytes)
+		{
+			return 0;
+		}
+		else
+		{
+			i += rv;
+			left_bytes -= rv;
+			continue;
+		}
 	}
-
 	return 0;
 }
