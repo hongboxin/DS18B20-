@@ -57,6 +57,7 @@ int	client_connect(arg_ctx_t *argp)
 		if( fd < 0 )
 		{
 			printf("Create socket fd failure:%s\n",strerror(errno));
+			freeaddrinfo(res);
 			return -1;
 		}
 
@@ -65,8 +66,13 @@ int	client_connect(arg_ctx_t *argp)
 			close(fd);
 			continue;
 		}
+		else
+		{
+			break;
+		}
 	}
 
+	freeaddrinfo(res);
 	return fd;
 }
 

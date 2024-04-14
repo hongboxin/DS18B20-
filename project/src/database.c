@@ -22,11 +22,12 @@ sqlite3 *open_database(char *table_name)
 {
 	int			rv = -1;
 	char 		sql[128];
-	char		*errmsg = NULL;
+	char		*errmsg;
 
 	if( (rv = sqlite3_open("client.db",&db)) < 0 )
 	{
 		printf("Open database failure:%s\n",sqlite3_errmsg(db));
+		sqlite3_free(errmsg);
 		return NULL;
 	}
 
@@ -41,6 +42,7 @@ sqlite3 *open_database(char *table_name)
 		return NULL;
 	}
 
+	sqlite3_free(errmsg);
 	return db;
 }
 
@@ -48,7 +50,7 @@ int insert_database(sqlite3 *db,char *table_name,pack_info_t *packp)
 {
 	int			rv = -1;
 	char		sql[128];
-	char		*errmsg = NULL;
+	char		*errmsg;
 
 	memset(sql,0,sizeof(sql));
 	sprintf(sql,"insert into %s values('%s','%s','%f')",table_name,packp->device,packp->datime,packp->temp);
@@ -59,7 +61,8 @@ int insert_database(sqlite3 *db,char *table_name,pack_info_t *packp)
 		sqlite3_free(errmsg);
 		return -1;
 	}
-
+	
+	sqlite3_free(errmsg); 
 	return 0;
 }
 
@@ -70,7 +73,7 @@ int check_database(sqlite3 *db,char *table_name)
 	int			row = 0;
 	int			column = 0;
 	char		sql[128];
-	char		*errmsg = NULL;
+	char		*errmsg;
 
 	memset(sql,0,sizeof(sql));
 	sprintf(sql,"select * from temperature");
@@ -85,10 +88,14 @@ int check_database(sqlite3 *db,char *table_name)
 	{
 		if( row > 0 )
 		{
+			sqlite3_free_table(result);
+			sqlite3_free(errmsg);
 			return row;
 		}
 		else
 		{
+			sqlite3_free_table(result);
+			sqlite3_free(errmsg);
 			return 0;
 		}
 	}
@@ -102,7 +109,7 @@ int get_database(sqlite3 *db,char *table_name,pack_info_t *packp)
 	int		row = 0;
 	int		column = 0;
 	char	sql[128];
-	char	*errmsg = NULL;
+	char	*errmsg;
 
 	memset(sql,0,sizeof(sql));
 	sprintf(sql,"select * from temperature ORDER BY ROWID ASC limit 1");
@@ -119,6 +126,8 @@ int get_database(sqlite3 *db,char *table_name,pack_info_t *packp)
 	strcpy(packp->datime,result[4]);
 	packp->temp = atof(result[5]);
 
+	sqlite3_free_table(result);
+	sqlite3_free(errmsg);
 	return 0;
 }
 
@@ -129,7 +138,7 @@ int delete_database(sqlite3 *db,char *table_name)
 	int     row = 0;
 	int     column = 0;
 	char	sql[128];
-	char	*errmsg = NULL;
+	char	*errmsg;
 
 	memset(sql,0,sizeof(sql));
 	sprintf(sql,"delete from temperature where ROWID IN (SELECT ROWID FROM temperature limit 1);");
