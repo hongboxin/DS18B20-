@@ -64,6 +64,10 @@ int	client_connect(arg_ctx_t *argp)
 		if( (rv = connect(fd,rp->ai_addr,len)) < 0 )
 		{
 			close(fd);
+			if( fd > 0 )
+			{
+				fd = -1;
+			}
 			continue;
 		}
 		else
@@ -71,7 +75,6 @@ int	client_connect(arg_ctx_t *argp)
 			break;
 		}
 	}
-
 	freeaddrinfo(res);
 	return fd;
 }
@@ -162,5 +165,24 @@ int send_data(int fd,char *buf,pack_info_t pack)
 			continue;
 		}
 	}
+	return 0;
+}
+
+int socket_term(int *ptr)
+{
+	if( !ptr )
+	{
+		return -1;
+	}
+
+	if( *ptr >= 0 )
+	{
+		if (close(*ptr) < 0) 
+		{
+			return -1;
+		}
+		*ptr = -1;
+	}
+
 	return 0;
 }

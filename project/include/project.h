@@ -13,11 +13,14 @@
 #ifndef _PROJECT_H_
 #define _PROJECT_H_
 
+#define SN_LENGTH		16
+#define DT_LENGTH 		32
+
 /* This structure is used to hold the information that needs to be obtained */
 typedef struct pack_info_s
 {
-	char	device[16];
-	char	datime[32];
+	char	device[SN_LENGTH];
+	char	datime[DT_LENGTH];
 	float	temp;
 }pack_info_t;
 

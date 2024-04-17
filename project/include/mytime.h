@@ -15,7 +15,7 @@
 #define _TIME_H_
 
 /* This function is used to obtain the current system time  */
-extern int get_time(char *datime);
+extern int get_time(char *datime,int size);
 
 /*  This function is used for timing sampling */
 extern int check_time(time_t *last_time,int interval);
