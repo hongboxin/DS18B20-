@@ -27,6 +27,6 @@ extern int server_connect(char *ip,int port);
 extern int send_data(int fd,char *buf,pack_info_t pack);
 
 /* This function is used to close fd */
-extern int socket_term(int *ptr);
+extern int socket_close(int *ptr);
 
 #endif

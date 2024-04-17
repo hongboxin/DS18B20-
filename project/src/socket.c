@@ -168,7 +168,7 @@ int send_data(int fd,char *buf,pack_info_t pack)
 	return 0;
 }
 
-int socket_term(int *ptr)
+int socket_close(int *ptr)
 {
 	if( !ptr )
 	{

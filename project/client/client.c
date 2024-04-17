@@ -100,7 +100,7 @@ int main(int argc,char *argv[])
 			}
 			log_debug("The client obtain the temperature successfully!\n");
 
-			strcpy(pack.device,SN);
+			strncpy(pack.device,SN,SN_LENGTH);
 
 			flag = 1;
 		}
@@ -108,9 +108,9 @@ int main(int argc,char *argv[])
 		if( net_status(fd) == 0 )
 		{
 			/* Close the file descriptor */
-		    if( fd > 0 )
+		    if( fd >= 0 )
 			{
-				if(	socket_term(&fd) < 0 )
+				if(	socket_close(&fd) < 0 )
 				{
 					log_error("Close fd failure:%s\n",strerror(errno));
 					continue;
